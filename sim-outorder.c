@@ -895,6 +895,8 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
   char name[128], c;
   int nsets, bsize, assoc;
 
+  printf("hello");
+
   if (fastfwd_count < 0 || fastfwd_count >= 2147483647)
     fatal("bad fast forward count: %d", fastfwd_count);
 
@@ -1031,6 +1033,8 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
 			       /* usize */0, assoc, cache_char2policy(c),
 			       dl1_access_fn, /* hit lat */cache_dl1_lat);
 
+        printf("d1 created");
+
       /* is the level 2 D-cache defined? */
       if (!mystricmp(cache_dl2_opt, "none"))
 	cache_dl2 = NULL;
@@ -1044,8 +1048,10 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
 				   /* usize */0, assoc, cache_char2policy(c),
 				   dl2_access_fn, /* hit lat */cache_dl2_lat);
 
+     printf("d2 created");
+
      //assign the partition size to d2 cache
-     cache_dl2->predicted_dirty_lines=RWP_size;
+     //cache_dl2->predicted_dirty_lines=RWP_size;
 
 	}
     }

@@ -134,10 +134,19 @@ struct cache_blk_t
 				   should probably be a multiple of 8 */
 };
 
+
 /* cache set definition (one or more blocks sharing the same set index) */
 struct cache_set_t
 {
   int number_of_dirty_lines;
+
+  int is_sampled_set;
+
+  //shadow directories
+
+  int *clean;
+  int *dirty;
+
   struct cache_blk_t **hash;	/* hash table: for fast access w/assoc, NULL
 				   for low-assoc caches */
   struct cache_blk_t *way_head;	/* head of way list */
@@ -159,6 +168,10 @@ struct cache_t
   int assoc;			/* cache associativity */
   enum cache_policy policy;	/* cache replacement policy */
   unsigned int hit_latency;	/* cache hit latency */
+
+  //global age counters
+  int * dirty_age;
+  int * clean_age;
 
   int predicted_dirty_lines;
 

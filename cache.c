@@ -276,6 +276,7 @@ cache_create(char *name,		/* name of the cache */
   struct cache_blk_t *blk;
   int i, j, bindex;
 
+
   /* check all cache parameters */
   if (nsets <= 0)
     fatal("cache size (in sets) `%d' must be non-zero", nsets);
@@ -352,12 +353,55 @@ cache_create(char *name,		/* name of the cache */
   if (!cp->data)
     fatal("out of virtual memory");
 
+     int z;
+
+   // if (!strcmp(name,"ul2"))
+    //{
+      //global counters
+      cp->dirty_age=(int*)malloc(sizeof(int)*(cp->assoc));
+      cp->clean_age=(int*)malloc(sizeof(int)*(cp->assoc));
+
+
+      for(z=0;z<(cp->assoc);z++)
+      {
+            cp->clean_age[z]=0;
+            cp->dirty_age[z]=0;
+      }
+//    }
+
   /* slice up the data blocks */
   for (bindex=0,i=0; i<nsets; i++)
     {
-      cp->sets[i].number_of_dirty_lines=0;
-      cp->sets[i].way_head = NULL;
-      cp->sets[i].way_tail = NULL;
+
+     // if (!strcmp(cp->name,"ul2"))
+      //{
+
+          cp->sets[i].number_of_dirty_lines=0;
+
+
+      //simple static policy to assign shadow directories
+
+          if((i/32)==(i%32))
+          {
+            //assign shadow directories
+             cp->sets[i].clean=(int *)malloc(sizeof(int)*(cp->assoc));
+             cp->sets[i].dirty=(int *)malloc(sizeof(int)*(cp->assoc));
+
+             for(z=0;z<(cp->assoc);z++)
+             {
+                  cp->sets[i].clean[z]=0;
+                  cp->sets[i].dirty[z]=0;
+             }
+             cp->sets[i].is_sampled_set=1;
+          }
+
+          cp->sets[i].is_sampled_set=0;
+     // }
+
+       cp->sets[i].way_head = NULL;
+       cp->sets[i].way_tail = NULL;
+
+
       /* get a hash table, if needed */
       if (cp->hsize)
 	{
@@ -519,6 +563,9 @@ cache_access(struct cache_t *cp,	/* cache to access */
   md_addr_t bofs = CACHE_BLK(cp, addr);
   struct cache_blk_t *blk, *repl;
   int lat = 0;
+  int block_number;
+
+
 
   /* default replacement address */
   if (repl_addr)
@@ -559,20 +606,45 @@ cache_access(struct cache_t *cp,	/* cache to access */
     }
   else
     {
-      /* low-associativity cache, linear search the way list */
-      for (blk=cp->sets[set].way_head;
-	   blk;
-	   blk=blk->way_next)
-	{
-	  if (blk->tag == tag && (blk->status & CACHE_BLK_VALID))
-	    goto cache_hit;
-	}
+       //if (!strcmp(cp->name,"ul2"))
+       //{
+
+           if(cp->sets[set].is_sampled_set==1)
+            {
+                block_number=0;
+
+                for (blk=cp->sets[set].way_head;blk;blk=blk->way_next)
+                {
+                    if (blk->tag == tag && (blk->status & CACHE_BLK_VALID))
+                        goto cache_hit;
+
+                    block_number++;
+                }
+
+            }
+      // }
+
+        else
+        {
+
+              /* low-associativity cache, linear search the way list */
+              for (blk=cp->sets[set].way_head;
+               blk;
+               blk=blk->way_next)
+            {
+              if (blk->tag == tag && (blk->status & CACHE_BLK_VALID))
+                goto cache_hit;
+            }
+        }
     }
 
   /* cache block not found */
 
   /* **MISS** */
   cp->misses++;
+
+   int k,l,i;
+
 
 
 
@@ -593,6 +665,44 @@ cache_access(struct cache_t *cp,	/* cache to access */
     break;
 
   case RWP:
+
+
+     for ( k=0; k<cp->nsets; k++)
+     {
+         if((k/32)==(k%32))
+         {
+             for(l=0;l<cp->assoc;l++)
+             {
+                 cp->dirty_age[l]+=cp->sets[k].dirty[l];
+                 cp->clean_age[l]+=cp->sets[k].clean[l];
+
+             }
+         }
+     }
+
+     //calculate the total of UA(i) and UB(assoc-1-i) for i=0 to assoc-1
+
+     int max=0,total_clean=0,total_dirty=0;
+
+     for(k=0;k<cp->assoc;k++)
+     {
+         for(l=0;l<k;l++)
+         {
+              total_dirty+=cp->dirty_age[l];
+         }
+
+         for(l=k;l<cp->assoc;l++)
+         {
+            total_clean+=cp->clean_age[l];
+         }
+
+         if(total_clean+total_dirty>max)
+         {
+             max=total_clean+total_dirty;
+             cp->predicted_dirty_lines=k+1;
+         }
+
+     }
 
 
     if(cmd==Write)
@@ -769,6 +879,24 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
   /* **HIT** */
   cp->hits++;
+
+  //update shadow directories
+
+  if(cp->policy==RWP)
+  {
+      if(cp->sets[set].is_sampled_set==1)
+      {
+          if(cmd==Write)
+
+            cp->sets[set].dirty[block_number]++;
+
+          else
+
+            cp->sets[set].clean[block_number]++;
+
+
+      }
+  }
 
   /* copy data out of cache block, if block exists */
   if (cp->balloc)
