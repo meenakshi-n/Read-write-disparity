@@ -157,8 +157,6 @@ static int RUU_size = 8;
 /* load/store queue (LSQ) size */
 static int LSQ_size = 4;
 
-/* Column Assoc Cache*/
-static char* cache_psuedoassoc_opt;
 
 /* l1 data cache config, i.e., {<config>|none} */
 static char *cache_dl1_opt;
@@ -825,10 +823,6 @@ sim_reg_options(struct opt_odb_t *odb)
 		 &cache_dl1_opt, "dl1:128:32:4:l",
 		 /* print */TRUE, NULL);
 
-  opt_reg_string(odb, "-pseudoassoc",
-         "l1 data cache config, i.e., {<config>|none}",
-         &cache_psuedoassoc_opt, "FALSE",
-         /* print */TRUE, NULL);
 
   opt_reg_note(odb,
 "  The cache config parameter <config> has the following format:\n"
