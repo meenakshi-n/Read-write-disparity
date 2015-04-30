@@ -426,6 +426,8 @@ cache_create(char *name,		/* name of the cache */
 
 	  /* invalidate new cache block */
 
+	  blk->RPV= (1 << (cp->RRIP_M ))-1; /* maximu value of RRPV*/
+
 
       blk->status = 0;
 	  blk->tag = 0;
@@ -459,6 +461,7 @@ cache_char2policy(char c)		/* replacement policy as a char */
   case 'r': return Random;
   case 'f': return FIFO;
   case 'w': return RWP;
+  case 'm': return RRIP;
   default: fatal("bogus replacement policy, `%c'", c);
   }
 }
@@ -478,6 +481,7 @@ cache_config(struct cache_t *cp,	/* cache instance */
 	  : cp->policy == Random ? "Random"
 	  : cp->policy == FIFO ? "FIFO"
 	  : cp->policy == RWP ? "RWP"
+	  : cp->policy == RRIP ? "RRIP"
 	  : (abort(), ""));
 }
 
@@ -643,7 +647,9 @@ cache_access(struct cache_t *cp,	/* cache to access */
   /* **MISS** */
   cp->misses++;
 
-   int k,l,i;
+   int k,l,i,flag;
+
+   unsigned int maxRPV;
 
 
 
@@ -803,6 +809,49 @@ cache_access(struct cache_t *cp,	/* cache to access */
     update_way_list(&cp->sets[set], repl, Head); /* put to MSU */
     break;
 
+  case RRIP:
+
+    maxRPV= (1<<(cp->RRIP_M))-1;
+
+    flag=0;
+
+    for (blk=cp->sets[set].way_head;blk;blk=blk->way_next)
+    {
+        if(blk->RPV==maxRPV)
+        {
+            flag=1;
+            repl=blk;
+            break;
+
+        }
+    }
+
+    if(flag==0)
+    {
+        do{
+            for (blk=cp->sets[set].way_head;blk;blk=blk->way_next)
+
+            {   blk->RPV++;
+
+                if(blk->RPV==maxRPV)
+                {
+                    flag=1;
+                    repl=blk;
+                }
+
+            }
+
+        }while(flag==0);
+
+
+    }
+
+    repl->RPV=maxRPV-1;
+
+    update_way_list(&cp->sets[set], repl, Head); /* put to MSU */
+
+    break;
+
   default:
     panic("bogus replacement policy");
   }
@@ -898,6 +947,14 @@ cache_access(struct cache_t *cp,	/* cache to access */
       }
   }
 
+
+    //RRIP
+
+    if(cp->policy==RRIP)
+    {
+        blk->RPV=0;
+    }
+
   /* copy data out of cache block, if block exists */
   if (cp->balloc)
     {
@@ -959,6 +1016,13 @@ cache_access(struct cache_t *cp,	/* cache to access */
   if (cp->balloc)
     {
       CACHE_BCOPY(cmd, blk, bofs, p, nbytes);
+    }
+
+  //RRIP
+
+    if(cp->policy==RRIP)
+    {
+        blk->RPV=0;
     }
 
   /* update dirty status */

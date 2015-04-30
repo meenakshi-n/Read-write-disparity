@@ -103,7 +103,8 @@ enum cache_policy {
   LRU,		/* replace least recently used block (perfect LRU) */
   Random,	/* replace a random block */
   FIFO,		/* replace the oldest block in the set */
-  RWP
+  RWP,
+  RRIP
 };
 
 /* block status values */
@@ -113,6 +114,7 @@ enum cache_policy {
 /* cache block (or line) definition */
 struct cache_blk_t
 {
+  unsigned int RPV;
 
   struct cache_blk_t *way_next;	/* next block in the ordered way chain, used
 				   to order blocks for replacement */
@@ -172,6 +174,9 @@ struct cache_t
   //global age counters
   int * dirty_age;
   int * clean_age;
+
+  //RRIP no. of bits M
+  int RRIP_M;
 
   int predicted_dirty_lines;
 

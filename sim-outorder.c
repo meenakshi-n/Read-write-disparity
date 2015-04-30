@@ -157,6 +157,8 @@ static int RUU_size = 8;
 /* load/store queue (LSQ) size */
 static int LSQ_size = 4;
 
+//RRIP M
+static int RRIP_M;
 
 /* l1 data cache config, i.e., {<config>|none} */
 static char *cache_dl1_opt;
@@ -816,6 +818,13 @@ sim_reg_options(struct opt_odb_t *odb)
 	      &LSQ_size, /* default */8,
 	      /* print */TRUE, /* format */NULL);
 
+
+ /*RRIP M*/
+  opt_reg_int(odb, "-rrip:size",
+	      "width of rrpv",
+	      &RRIP_M, /* default */2,
+	      /* print */TRUE, /* format */NULL);
+
   /* cache options */
 
   opt_reg_string(odb, "-cache:dl1",
@@ -1154,6 +1163,8 @@ sim_check_options(struct opt_odb_t *odb,        /* options database */
               cache_dl3 = cache_create(name, nsets, bsize, /* balloc */FALSE,
                                        /* usize */0, assoc, cache_char2policy(c),
                                        dl3_access_fn, /* hit latency */cache_dl3_lat);
+
+              cache_dl3->RRIP_M=RRIP_M;
             }
         }
     }
