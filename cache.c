@@ -428,7 +428,7 @@ cache_create(char *name,		/* name of the cache */
 
 	  blk->RPV= (1 << (cp->RRIP_M ))-1; /* maximu value of RRPV*/
 
-
+      blk->dirty_bit=0;
       blk->status = 0;
 	  blk->tag = 0;
 	  blk->ready = 0;
@@ -588,12 +588,12 @@ cache_access(struct cache_t *cp,	/* cache to access */
   /* permissions are checked on cache misses */
 
   /* check for a fast hit: access to same block */
-  if (CACHE_TAGSET(cp, addr) == cp->last_tagset)
-    {
+ // if (CACHE_TAGSET(cp, addr) == cp->last_tagset)
+   // {
       /* hit in the same block */
-      blk = cp->last_blk;
-      goto cache_fast_hit;
-    }
+    //  blk = cp->last_blk;
+     // goto cache_fast_hit;
+    //}
 
   if (cp->hsize)
     {
@@ -690,7 +690,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
      int max=0,total_clean=0,total_dirty=0;
 
-     for(k=0;k<cp->assoc;k++)
+     for(k=0;k<=cp->assoc;k++)
      {
          for(l=0;l<k;l++)
          {
@@ -705,7 +705,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
          if(total_clean+total_dirty>max)
          {
              max=total_clean+total_dirty;
-             cp->predicted_dirty_lines=k+1;
+             cp->predicted_dirty_lines=k;//changed
          }
 
      }
@@ -720,7 +720,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             while(repl!=NULL)
             {
-                if(repl->status==CACHE_BLK_VALID)
+                if(repl->dirty_bit==0)
 
                     break;
 
@@ -733,7 +733,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             cp->sets[set].number_of_dirty_lines++;
 
-            repl->status=CACHE_BLK_DIRTY;
+            repl->dirty_bit=1;
 
         }
 
@@ -743,7 +743,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             while(repl)
             {
-                if(repl->status==CACHE_BLK_DIRTY)
+                if(repl->dirty_bit==1)
 
                     break;
 
@@ -766,7 +766,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             while(repl)
             {
-                if(repl->status==CACHE_BLK_DIRTY)
+                if(repl->dirty_bit==1)
 
                     break;
 
@@ -780,7 +780,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             cp->sets[set].number_of_dirty_lines--;
 
-            repl->status=CACHE_BLK_VALID; //is this equivalent to clean
+            repl->dirty_bit=0; //is this equivalent to clean
 
         }
 
@@ -790,7 +790,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
 
             while(repl)
             {
-                 if(repl->status==CACHE_BLK_VALID)
+                 if(repl->dirty_bit==0)
 
                     break;
 
@@ -961,34 +961,37 @@ cache_access(struct cache_t *cp,	/* cache to access */
       CACHE_BCOPY(cmd, blk, bofs, p, nbytes);
     }
 
-  /* update dirty status */
+  /* update dirty bit status */
 
       if (cmd == Write)
       {
-        if(blk->status!=CACHE_BLK_DIRTY)
+        if(blk->dirty_bit==0)
         {
 
             cp->sets[set].number_of_dirty_lines++;
 
         }
 
-        blk->status |= CACHE_BLK_DIRTY;
+        blk->dirty_bit=1;
 
       }
 
       //if it's a read hit
       else
       {
-            if(blk->status==CACHE_BLK_DIRTY)
+            if(blk->dirty_bit==1)
 
                 cp->sets[set].number_of_dirty_lines--;
       }
 
 
+     /* update dirty status */
+  if (cmd == Write)
+    blk->status |= CACHE_BLK_DIRTY;
 
 
   /* if LRU replacement and this is not the first element of list, reorder */
-  if (blk->way_prev && cp->policy == LRU)
+  if (blk->way_prev && cp->policy == LRU && cp->policy==RWP)
     {
       /* move this block to head of the way (MRU) list */
       update_way_list(&cp->sets[set], blk, Head);

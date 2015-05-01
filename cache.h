@@ -116,6 +116,8 @@ struct cache_blk_t
 {
   unsigned int RPV;
 
+  unsigned int dirty_bit;
+
   struct cache_blk_t *way_next;	/* next block in the ordered way chain, used
 				   to order blocks for replacement */
   struct cache_blk_t *way_prev;	/* previous block in the order way chain */
